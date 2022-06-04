@@ -18,14 +18,40 @@ export const getMediaUrl = (post: RedditData): Array<string> => {
     return [];
 }
 
-export const getJsonFromSubreddit = (subreddit: string): Promise<RedditData[]> => {
-    return axios.get(`https://www.reddit.com/${subreddit}.json`, {
+export const getJsonFromSubreddit = (subreddit: string, lastID: string = '', fetchOlderPosts: boolean = false, after: string = ''): Promise<RedditData[]> => {
+    let url = `https://www.reddit.com/${subreddit}/${!fetchOlderPosts && !subreddit.startsWith('u/') ? 'new/' : ''}.json?limit=999`;
+
+    if(!fetchOlderPosts && !!lastID) {
+        url = `${url}&before=${lastID}`;
+    }
+
+    if(fetchOlderPosts) {
+        url = `${url}&after=${after}`;
+    }
+
+    return axios.get(url, {
         responseType: 'json'
     })
-        .then((resp: any) => {
-            const posts: RedditData[] = resp.data.data.children.map((post: any) => post.data);
+        .then(async (resp: any) => {
+            const posts: RedditData[] = resp.data.data.children.filter((post: any) => post.kind === 't3').map((post: any) => post.data);
+            const newAfter = resp.data.data.after;
+            const newBefore = resp.data.data.before;
+            if(fetchOlderPosts)
+                console.log(`[RedditService] Current after ${after}; new after ${newAfter} from ${subreddit}`);
+            else
+                console.log(`[RedditService] Current before ${lastID}; new before ${newBefore} from ${subreddit}`);
 
-            return posts;
+            if(fetchOlderPosts && newAfter) {
+                const olderPosts = await getJsonFromSubreddit(subreddit, lastID, true, newAfter);
+                return posts.concat(olderPosts);
+            }else if(newBefore){
+                const newerPosts = await getJsonFromSubreddit(subreddit, newBefore);
+                return posts.concat(newerPosts);
+            }
+
+            return posts.sort((a: RedditData, b: RedditData) => {
+                return b.created - a.created;
+            });
         });
 }
 

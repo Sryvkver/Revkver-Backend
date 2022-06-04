@@ -1,10 +1,11 @@
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import { utimes, utimesSync } from 'utimes';
 
 const _DOWNLOADPATH = './downloads/';
 
-export const downloadFile = async (url: string, title: string, extension: string, subfolder: string|null = null): Promise<void> => {
+export const downloadFile = async (url: string, title: string, extension: string, utime: number = +new Date(), subfolder: string|null = null): Promise<void> => {
     return new Promise((res, rej) => {
         const downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
         const filename = removeInvalidChars(title).substring(0, 240).trim() + '.' + extension;
@@ -16,6 +17,7 @@ export const downloadFile = async (url: string, title: string, extension: string
             return;
         }
         fs.writeFileSync(path.join(downloadfolder, filename), '');
+        utimesSync(path.join(downloadfolder, filename), utime*1000);
 
         axios.get(url, {
             responseType: 'stream'
