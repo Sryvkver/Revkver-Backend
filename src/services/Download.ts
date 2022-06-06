@@ -5,27 +5,36 @@ import { utimes, utimesSync } from 'utimes';
 
 const _DOWNLOADPATH = './downloads/';
 
-export const downloadFile = async (url: string, title: string, extension: string, utime: number = +new Date(), subfolder: string|null = null): Promise<void> => {
+// TODO check md5 of files, to remove duplicates
+
+export const downloadFile = async (url: string, id: string, title: string, extension: string, utime: number, subfolder: string|null = null): Promise<string> => {
     return new Promise((res, rej) => {
         const downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
-        const filename = removeInvalidChars(title).substring(0, 240).trim() + '.' + extension;
+        let filename = removeInvalidChars(title).substring(0, 240).trim();
 
         fs.mkdirSync(downloadfolder, { recursive: true });
 
-        if(fs.existsSync(path.join(downloadfolder, filename))) {
-            res();
+        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
+            filename += '_' + id;
+
+
+        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
+            res(id);
             return;
         }
+
+        filename += '.' + extension;
         fs.writeFileSync(path.join(downloadfolder, filename), '');
-        utimesSync(path.join(downloadfolder, filename), utime*1000);
 
         axios.get(url, {
-            responseType: 'stream'
+            responseType: 'stream',
+            timeout: 999999999
         }).then(response => {
             response.data.pipe(fs.createWriteStream(path.join(downloadfolder, filename)));
             response.data.on('end', () => {
+                utimesSync(path.join(downloadfolder, filename), utime*1000);
                 console.log(`finished downloading: ${filename}`);
-                res();
+                res(id);
             });
         }).catch(err => {
             console.error(err)

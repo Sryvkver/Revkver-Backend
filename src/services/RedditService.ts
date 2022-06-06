@@ -1,6 +1,12 @@
 import axios from "axios";
 import { RedditData } from "../model/redditData";
 
+
+const client = axios.create({headers: {
+    Cookie: process.env.REDDIT_COOKIE ?? '',
+}, withCredentials: true});
+
+
 export const getMediaUrl = (post: RedditData): Array<string> => {
     if(post.is_gallery) {
         return getGalleryImages(post);
@@ -12,7 +18,7 @@ export const getMediaUrl = (post: RedditData): Array<string> => {
 
     if(post?.url_overridden_by_dest && hasMediaExtension(post.url_overridden_by_dest)) return [fixURL(post.url_overridden_by_dest)]; // Check if extension is correct
     if(post?.preview?.reddit_video_preview?.fallback_url) return [fixURL(post.preview.reddit_video_preview.fallback_url)];
-    if(post?.link_url) return [fixURL(post.link_url)];
+    if(post?.link_url && hasMediaExtension(post.link_url)) return [fixURL(post.link_url)];
     if(post?.preview?.images[0]?.source?.url) return [fixURL(post.preview.images[0].source.url)];
 
     return [];
@@ -29,7 +35,8 @@ export const getJsonFromSubreddit = (subreddit: string, lastID: string = '', fet
         url = `${url}&after=${after}`;
     }
 
-    return axios.get(url, {
+    return client.get(url, {
+        
         responseType: 'json'
     })
         .then(async (resp: any) => {
@@ -64,12 +71,13 @@ const hasMediaExtension = (url: string): boolean => {
 }
 
 export const getExtensionFromUrl = (url: string): string|null => {
-    const regex = /.+\/.+\.(.+?)(\?|$)/gim;
+    //const regex = /.+\/.+\.(.+?)(\?|$)/gim;
+    const regex = /.+\/.+\.(?!.+\/)(.+?)(\?|$)/gim;
     const match = regex.exec(url);
     if(match) {
         return match[1];
     }
-    return null;
+    return url.includes('v.redd.it') && url.includes('DASH') ? 'mp4' : null;
 }
 
 const getGalleryImages = (post: RedditData): Array<string> => {

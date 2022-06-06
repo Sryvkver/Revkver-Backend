@@ -1,9 +1,11 @@
+require('dotenv').config()
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { downloadFile } from "./services/Download";
 import { getExtensionFromUrl, getJsonFromSubreddit, getMediaUrl } from "./services/RedditService"
-import { addSubreddits, getSubreddits, updateAllSubreddits, updateSingleSubreddit } from './services/Database';
+import { addDownloadedIds, addSubreddits, getDownloadedIds, getSubreddits, updateAllSubreddits, updateSingleSubreddit } from './services/Database';
 import { AddSubredditRequest } from './model/AddSubredditRequest';
 
 const app = express();
@@ -33,9 +35,11 @@ app.listen(PORT, () => {
 });
 
 const getFeed = () => {
+    const utime = +new Date() / 1000;
     const subreddits = getSubreddits();
     const feedPromises = [];
-    const downloadPromises: Array<Promise<void>> = [];
+    const downloadPromises: Array<Promise<string>> = [];
+    const downloadedIds = getDownloadedIds();
 
     for (const subreddit of subreddits) {
         const fetchOlderPosts = subreddit.fetchOlderPosts && subreddit.lastUpdate < 0;
@@ -46,14 +50,16 @@ const getFeed = () => {
             }
 
             posts.forEach(post => {
-                const urls = getMediaUrl(post);
-                urls.forEach(url => {
-                    const extension = getExtensionFromUrl(url);
-                    if (extension && (post.title || post.link_title)) {
-                        const downloadPromise = downloadFile(url, (post.title ?? post.link_title) as string, extension, post.created, subreddit.name);
-                        downloadPromises.push(downloadPromise);
-                    }
-                });
+                if(!downloadedIds.includes(post.name)) {
+                    const urls = getMediaUrl(post);
+                    urls.forEach(url => {
+                        const extension = getExtensionFromUrl(url);
+                        if (extension && (post.title || post.link_title)) {
+                            const downloadPromise = downloadFile(url, post.name, (post.title ?? post.link_title) as string, extension, utime, subreddit.name).catch(err => {console.log(err); return '';});
+                            downloadPromises.push(downloadPromise);
+                        }
+                    });
+                }
             });
         });
 
@@ -64,7 +70,8 @@ const getFeed = () => {
         console.log('All feeds fetched');
         updateAllSubreddits();
 
-        Promise.all(downloadPromises).then(() => {
+        Promise.all(downloadPromises).then((values) => {
+            addDownloadedIds(values);
             console.log('All files downloaded');
         });
     });

@@ -78,3 +78,15 @@ export const updateSingleSubreddit = (subreddit: string, newData: Subreddit): vo
 
     db.push('/subreddits', subreddits, true);
 }
+
+export const getDownloadedIds = (): Array<string> => {
+    try {
+        return db.getData('/downloadedIds');
+    } catch (error) {
+        return [];
+    }
+}
+
+export const addDownloadedIds = (ids: Array<string>): void => {
+    db.push('/downloadedIds', ids, false);
+}
