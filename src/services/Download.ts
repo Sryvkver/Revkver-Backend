@@ -2,8 +2,10 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { utimes, utimesSync } from 'utimes';
+import crypto from 'crypto';
+import { addMD5, md5AlreadyDownloaded } from './Database';
 
-const _DOWNLOADPATH = './downloads/';
+const _DOWNLOADPATH = process.env.DOWNLOAD_FOLDER ?? './downloads/';
 
 // TODO check md5 of files, to remove duplicates
 
@@ -30,8 +32,24 @@ export const downloadFile = async (url: string, id: string, title: string, exten
             responseType: 'stream',
             timeout: 999999999
         }).then(response => {
-            response.data.pipe(fs.createWriteStream(path.join(downloadfolder, filename)));
+            //response.data.pipe(fs.createWriteStream(path.join(downloadfolder, filename)));
+            const fileBufferArr: Uint8Array[] = [];
+            response.data.on('data', (chunk: Uint8Array) => {
+                fileBufferArr.push(chunk);
+            });
             response.data.on('end', () => {
+                const fileBuffer = Buffer.concat(fileBufferArr);
+                const md5 = getMD5(fileBuffer);
+
+                if(md5AlreadyDownloaded(md5)) {
+                    fs.unlinkSync(path.join(downloadfolder, filename));
+                    res(id);
+                    return;
+                }
+
+                addMD5(md5);
+                fs.writeFileSync(path.join(downloadfolder, filename), fileBuffer);
+
                 utimesSync(path.join(downloadfolder, filename), utime*1000);
                 console.log(`finished downloading: ${filename}`);
                 res(id);
@@ -46,6 +64,10 @@ export const downloadFile = async (url: string, id: string, title: string, exten
 
 const removeInvalidChars = (str: string): string => {
     return str.replace(/[^\w\.!@#$^+=-\s]/g, '');
+}
+
+const getMD5 = (fileBuffer: Buffer) => {
+    return crypto.createHash('md5').update(fileBuffer).digest('hex');
 }
 
 fs.mkdirSync(_DOWNLOADPATH, { recursive: true });

@@ -87,6 +87,22 @@ export const getDownloadedIds = (): Array<string> => {
     }
 }
 
+export const getDownloadedMD5s = (): Array<string> => {
+    try {
+        return db.getData('/downloadedIds');
+    } catch (error) {
+        return [];
+    }
+}
+
+export const md5AlreadyDownloaded = (id: string): boolean => {
+    return getDownloadedMD5s().includes(id);
+}
+
+export const addMD5 = (md5: string): void => {
+    db.push('/hashes', [md5], false);
+}
+
 export const addDownloadedIds = (ids: Array<string>): void => {
     db.push('/downloadedIds', ids, false);
 }
