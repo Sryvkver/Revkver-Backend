@@ -57,7 +57,7 @@ export const getJsonFromSubreddit = (subreddit: string, lastID: string = '', fet
             }
 
             return posts.sort((a: RedditData, b: RedditData) => {
-                return b.created - a.created;
+                return a.created - b.created;
             });
         });
 }

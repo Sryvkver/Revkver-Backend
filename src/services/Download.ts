@@ -113,7 +113,9 @@ const _download = async (url: string, filePath: string, filename: string, extens
             });
         }).catch(err => {
             console.error(err)
-            fs.unlinkSync(path.join(filePath, filename));
+            try {
+                fs.unlinkSync(path.join(filePath, filename));
+            } catch (error) {}
             rej();
         });
     });

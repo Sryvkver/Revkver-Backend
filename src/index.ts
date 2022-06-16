@@ -49,7 +49,7 @@ const getFeed = () => {
         const fetchOlderPosts = subreddit.fetchOlderPosts && subreddit.lastUpdate < 0;
         const promise = getJsonFromSubreddit(subreddit.url, subreddit.lastID, fetchOlderPosts).then(posts => {
             if(posts.length > 0) {
-                subreddit.lastID = posts[0].name;
+                subreddit.lastID = posts[posts.length].name;
                 updateSingleSubreddit(subreddit.name, subreddit);
             }
 
