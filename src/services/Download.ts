@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { utimes, utimesSync } from 'utimes';
 import crypto from 'crypto';
-import { addDownloadedIds, addMD5, getDownloadedIds, md5AlreadyDownloaded, getDownloadedMD5s, setDownloadedMD5s } from './Database';
+import { addDownloadedIds, getDownloadedIds } from './Database';
 import { RedditData } from '../model/redditData';
 import { getExtensionFromUrl, getMediaUrl } from './RedditService';
 
@@ -12,61 +12,62 @@ const _MAX_THREADS = 5;
 const _THREAD_QUEUE: Array<() => Promise<void>> = [];
 let _CURRENT_THREADS = 0;
 const downloadedIds = getDownloadedIds();
+const downloadedMD5s: Array<string> = [];
 
 // TODO check md5 of files, to remove duplicates
 
-export const downloadFile = async (url: string, id: string, title: string, extension: string, utime: number, subfolder: string|null = null): Promise<string> => {
-    return new Promise((res, rej) => {
-        const downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
-        let filename = removeInvalidChars(title).substring(0, 240).trim();
+// export const downloadFile = async (url: string, id: string, title: string, extension: string, utime: number, subfolder: string|null = null): Promise<string> => {
+//     return new Promise((res, rej) => {
+//         const downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
+//         let filename = removeInvalidChars(title).substring(0, 240).trim();
 
-        fs.mkdirSync(downloadfolder, { recursive: true });
+//         fs.mkdirSync(downloadfolder, { recursive: true });
 
-        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
-            filename += '_' + id;
+//         if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
+//             filename += '_' + id;
 
 
-        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
-            res(id);
-            return;
-        }
+//         if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
+//             res(id);
+//             return;
+//         }
 
-        filename += '.' + extension;
-        fs.writeFileSync(path.join(downloadfolder, filename), '');
+//         filename += '.' + extension;
+//         fs.writeFileSync(path.join(downloadfolder, filename), '');
 
-        axios.get(url, {
-            responseType: 'stream',
-            timeout: 999999999
-        }).then(response => {
-            //response.data.pipe(fs.createWriteStream(path.join(downloadfolder, filename)));
-            const fileBufferArr: Uint8Array[] = [];
-            response.data.on('data', (chunk: Uint8Array) => {
-                fileBufferArr.push(chunk);
-            });
-            response.data.on('end', () => {
-                const fileBuffer = Buffer.concat(fileBufferArr);
-                const md5 = getMD5(fileBuffer);
+//         axios.get(url, {
+//             responseType: 'stream',
+//             timeout: 999999999
+//         }).then(response => {
+//             //response.data.pipe(fs.createWriteStream(path.join(downloadfolder, filename)));
+//             const fileBufferArr: Uint8Array[] = [];
+//             response.data.on('data', (chunk: Uint8Array) => {
+//                 fileBufferArr.push(chunk);
+//             });
+//             response.data.on('end', () => {
+//                 const fileBuffer = Buffer.concat(fileBufferArr);
+//                 const md5 = getMD5(fileBuffer);
 
-                if(md5AlreadyDownloaded(md5)) {
-                    fs.unlinkSync(path.join(downloadfolder, filename));
-                    res(id);
-                    return;
-                }
+//                 if(md5AlreadyDownloaded(md5)) {
+//                     fs.unlinkSync(path.join(downloadfolder, filename));
+//                     res(id);
+//                     return;
+//                 }
 
-                addMD5(md5);
-                fs.writeFileSync(path.join(downloadfolder, filename), fileBuffer);
+//                 addMD5(md5);
+//                 fs.writeFileSync(path.join(downloadfolder, filename), fileBuffer);
 
-                utimesSync(path.join(downloadfolder, filename), utime*1000);
-                console.log(`finished downloading: ${filename}`);
-                res(id);
-            });
-        }).catch(err => {
-            console.error(err)
-            fs.unlinkSync(path.join(downloadfolder, filename));
-            rej();
-        });
-    });
-}
+//                 utimesSync(path.join(downloadfolder, filename), utime*1000);
+//                 console.log(`finished downloading: ${filename}`);
+//                 res(id);
+//             });
+//         }).catch(err => {
+//             console.error(err)
+//             fs.unlinkSync(path.join(downloadfolder, filename));
+//             rej();
+//         });
+//     });
+// }
 
 const _download = async (url: string, filePath: string, filename: string, extension: string): Promise<void> => {
     return new Promise((res, rej) => {
@@ -97,13 +98,13 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 const fileBuffer = Buffer.concat(fileBufferArr);
                 const md5 = getMD5(fileBuffer);
 
-                if(md5AlreadyDownloaded(md5)) {
+                if(downloadedMD5s.includes(md5)) {
                     fs.unlinkSync(path.join(filePath, filename));
                     res();
                     return;
                 }
 
-                addMD5(md5);
+                downloadedMD5s.push(md5);
                 fs.writeFileSync(path.join(filePath, filename), fileBuffer);
 
                 //utimesSync(path.join(filePath, filename), utime*1000);
@@ -184,10 +185,11 @@ const updateMD5Database = async (): Promise<void> => {
     return new Promise((res, rej) => {
         const files = readAllFilesOfDir(_DOWNLOADPATH);
         const md5s = files.map(filepath => getMD5(fs.readFileSync(filepath)));
-        const oldMd5s = getDownloadedMD5s();
+        downloadedMD5s.push(...md5s);
+        //const oldMd5s = getDownloadedMD5s();
 
-        const set = new Set([...md5s, ...oldMd5s]);
-        setDownloadedMD5s(Array.from(set));
+        //const set = new Set([...md5s, ...oldMd5s]);
+        //setDownloadedMD5s(Array.from(set));
 
         res();
     })

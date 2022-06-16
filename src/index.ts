@@ -3,7 +3,7 @@ require('dotenv').config()
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import { downloadFile, downloadFilev2, initDownloader } from "./services/Download";
+import { downloadFilev2, initDownloader } from "./services/Download";
 import { getExtensionFromUrl, getJsonFromSubreddit, getMediaUrl } from "./services/RedditService"
 import { addDownloadedIds, addSubreddits, getDownloadedIds, getSubreddits, updateAllSubreddits, updateSingleSubreddit } from './services/Database';
 import { AddSubredditRequest } from './model/AddSubredditRequest';
