@@ -48,15 +48,15 @@ const getFeed = () => {
     for (const subreddit of subreddits) {
         const fetchOlderPosts = subreddit.fetchOlderPosts && subreddit.lastUpdate < 0;
         const promise = getJsonFromSubreddit(subreddit.url, subreddit.lastID, fetchOlderPosts).then(posts => {
-            if(posts.length > 0) {
-                subreddit.lastID = posts[posts.length].name;
-                updateSingleSubreddit(subreddit.name, subreddit);
-            }
-
             posts.forEach(post => {
                 const downloadPromise = downloadFilev2(post, subreddit.name);
                 downloadPromises.push(downloadPromise);
             });
+
+            if(posts.length > 0) {
+                subreddit.lastID = posts[posts.length-1].name;
+                updateSingleSubreddit(subreddit.name, subreddit);
+            }
         });
 
         feedPromises.push(promise);
