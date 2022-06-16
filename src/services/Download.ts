@@ -129,10 +129,15 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string|null = 
         urls.forEach((url, index) => {
             const extension = getExtensionFromUrl(url);
             if (extension && (post.title || post.link_title)) {
-                const title = (post.title ?? post.link_title) as string;
-                const fileName = removeInvalidChars(post.is_gallery ? index.toString() : title).substring(0, 240).trim();
+                const title = removeInvalidChars((post.title ?? post.link_title) as string).substring(0, 240).trim();;
+                const fileName = post.is_gallery ? index.toString() : title;
                 //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
-                const filePath = post.is_gallery ? path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, title) : path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH);
+                const filePath = post.is_gallery ? 
+                    path.join((subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH), title) 
+                    : path.join(subfolder ? 
+                        path.join(_DOWNLOADPATH, subfolder) 
+                        : _DOWNLOADPATH);
+
                 downloadPromises.push(
                     waitForThread(() => _download(url, filePath, fileName, extension))
                 )
