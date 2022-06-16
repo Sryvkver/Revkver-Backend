@@ -99,7 +99,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 const md5 = getMD5(fileBuffer);
 
                 if(downloadedMD5s.includes(md5)) {
-                    fs.unlinkSync(path.join(filePath, filename));
+                    //fs.unlinkSync(path.join(filePath, filename));
                     res();
                     return;
                 }
