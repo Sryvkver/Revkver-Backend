@@ -71,11 +71,11 @@ const downloadedMD5s: Array<string> = [];
 
 const _download = async (url: string, filePath: string, filename: string, extension: string, id: string, subfolder: string|null): Promise<void> => {
     return new Promise((res, rej) => {
-        let downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
+        let downloadfolder = filePath;
         if(subfolder){
 
             if(fs.existsSync(downloadfolder) && (!fs.statSync(downloadfolder).isDirectory || fs.existsSync(path.join(downloadfolder, filename + '.' + extension))))
-                downloadfolder += path.join(_DOWNLOADPATH, subfolder, id);
+                downloadfolder += path.join(filePath, id);
     
             if(!fs.existsSync(downloadfolder))
                 fs.mkdirSync(downloadfolder, { recursive: true });
