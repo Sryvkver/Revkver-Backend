@@ -117,7 +117,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
                     return;
                 }
                 downloadedMD5s.push(md5);
-                const wait = new Promise(res => setTimeout(res, 5000));
+                const wait = new Promise(res => setTimeout(res, 200));
                 wait.then(() => {
                     console.log('Opening file: ' + fileLocation);
                     fs.open(fileLocation, 'w', (err, fd) => {
