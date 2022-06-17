@@ -121,7 +121,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
     });
 }
 
-export const downloadFilev2 = async (post: RedditData, subfolder: string|null = null): Promise<void> => {
+export const downloadFilev2 = async (post: RedditData, subfolder: string): Promise<void> => {
     const downloadPromises: Array<Promise<void>> = [];
 
     if (!downloadedIds.includes(post.name)) {
@@ -132,11 +132,9 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string|null = 
                 const title = removeInvalidChars((post.title ?? post.link_title) as string).substring(0, 240).trim();;
                 const fileName = post.is_gallery ? index.toString() : title;
                 //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
-                const filePath = post.is_gallery ? 
-                    path.join((subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH), title) 
-                    : path.join(subfolder ? 
-                        path.join(_DOWNLOADPATH, subfolder) 
-                        : _DOWNLOADPATH);
+                const filePath = post.is_gallery 
+                    ? path.join(_DOWNLOADPATH, subfolder, title)
+                    : path.join(_DOWNLOADPATH, subfolder);
 
                 downloadPromises.push(
                     waitForThread(() => _download(url, filePath, fileName, extension))
