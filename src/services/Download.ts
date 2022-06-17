@@ -115,6 +115,14 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 } catch (error: any) {
                     if(error.code !== 'EISDIR') {
                         throw error;
+                    }else{
+                        fs.unlinkSync(fullFilePath);
+                        const index = downloadedMD5s.indexOf(md5);
+                        if(index !== -1)
+                            downloadedMD5s.splice(index, 1);
+
+                        rej('EISDIR');
+                        return;
                     }
                 }
                 res();
@@ -139,9 +147,17 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
                 //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
                 const filePath = path.join(_DOWNLOADPATH, subfolder);
 
-                downloadPromises.push(
-                    waitForThread(() => _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null))
-                )
+                const threadPromise = waitForThread(() => {
+                    return _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null)
+                        .catch((err: any) => {
+                            if(err === 'EISDIR') {
+                                console.log(`${post.name} failed, retrying...`);
+                                downloadPromises.push(threadPromise);
+                            }
+                        })
+                })
+
+                downloadPromises.push(threadPromise);
             }
         });
     }
