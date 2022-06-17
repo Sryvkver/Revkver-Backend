@@ -108,13 +108,36 @@ const _download = async (url: string, filePath: string, filename: string, extens
                     res();
                     return;
                 }
-
                 downloadedMD5s.push(md5);
                 console.log('Writing file: ' + path.join(filePath, filename));
-                fs.writeFileSync(path.join(filePath, filename), fileBuffer);
+                fs.open(path.join(filePath, filename), 'w', (err, fd) => {
+                    if(err) {
+                        console.error(err);
+                        rej();
+                        return;
+                    }
+                    fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
+                        if(err) {
+                            console.error(err);
+                            rej();
+                            return;
+                        }
+                        fs.close(fd, (err) => {
+                            if(err) {
+                                console.error(err);
+                                rej();
+                                return;
+                            }
+                            console.log('Finished downloading: ' + path.join(filePath, filename));
+                            //res();
+                        });
+                    });
+                }
+                );
+                //fs.writeFileSync(path.join(filePath, filename), fileBuffer);
 
                 //utimesSync(path.join(filePath, filename), utime*1000);
-                console.log(`finished downloading: ${filename}`);
+                //console.log(`finished downloading: ${filename}`);
                 res();
             });
         }).catch(err => {
