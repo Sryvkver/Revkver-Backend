@@ -118,35 +118,37 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 }
                 downloadedMD5s.push(md5);
                 console.log('Writing file: ' + fileLocation);
-                fs.open(fileLocation, 'w', (err, fd) => {
-                    if(err) {
-                        console.error(err);
-                        rej();
-                        return;
-                    }
-                    fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
+                const wait = new Promise(res => setTimeout(res, 5000));
+                wait.then(() => {
+                    fs.open(fileLocation, 'w', (err, fd) => {
                         if(err) {
                             console.error(err);
                             rej();
                             return;
                         }
-                        fs.close(fd, (err) => {
+                        fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
                             if(err) {
                                 console.error(err);
                                 rej();
                                 return;
                             }
-                            console.log('Finished downloading: ' + fileLocation);
-                            //res();
+                            fs.close(fd, (err) => {
+                                if(err) {
+                                    console.error(err);
+                                    rej();
+                                    return;
+                                }
+                                console.log('Finished downloading: ' + fileLocation);
+                                res();
+                            });
                         });
                     });
-                }
-                );
+                });
+
                 //fs.writeFileSync(fileLocation, fileBuffer);
 
                 //utimesSync(fileLocation, utime*1000);
                 //console.log(`finished downloading: ${filename}`);
-                res();
             });
         }).catch(err => {
             console.error(err)
