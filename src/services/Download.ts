@@ -142,22 +142,10 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
         urls.forEach((url, index) => {
             const extension = getExtensionFromUrl(url);
             if (extension && (post.title || post.link_title)) {
-                const title = removeInvalidChars((post.title ?? post.link_title) as string).substring(0, 240).trim();;
-                const fileName = post.is_gallery ? index.toString() : title;
-                //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
-                const filePath = path.join(_DOWNLOADPATH, subfolder);
-
-                const threadPromise = waitForThread(() => {
-                    return _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null)
-                        .catch((err: any) => {
-                            if(err === 'EISDIR') {
-                                console.log(`${title} - ${fileName} failed, retrying...`);
-                                downloadPromises.push(threadPromise);
-                            }
-                        })
-                })
-
-                downloadPromises.push(threadPromise);
+                const thread = generateDownloadPromise(url, index, subfolder, post);
+                
+                if(thread)
+                    downloadPromises.push(thread);
             }
         });
     }
@@ -170,6 +158,25 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
 
 }
 
+const generateDownloadPromise = (url: string, index: number, subfolder: string, post: RedditData) => {
+    const extension = getExtensionFromUrl(url);
+    if (extension && (post.title || post.link_title)) {
+        const title = removeInvalidChars((post.title ?? post.link_title) as string).substring(0, 240).trim();;
+        const fileName = post.is_gallery ? index.toString() : title;
+        //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
+        const filePath = path.join(_DOWNLOADPATH, subfolder);
+
+        return waitForThread(() => _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null)).catch(err => {
+            if(err === 'EISDIR'){
+                console.log(`${post.title ?? post.link_title} - ${index} failed to download, retrying...`);
+                generateDownloadPromise(url, index, subfolder, post)?.then(() => console.log(`${post.title ?? post.link_title} - ${index} successfully downloaded`));
+            }
+        });
+    }
+
+    return null;
+}
+
 const waitForThread = async (func: () => Promise<void>): Promise<void> => {
     _THREAD_QUEUE.push(func);
     while (_CURRENT_THREADS >= _MAX_THREADS) {
@@ -179,7 +186,7 @@ const waitForThread = async (func: () => Promise<void>): Promise<void> => {
 
     const nextFunc = _THREAD_QUEUE.shift();
 
-    return nextFunc!().catch(err => {console.log(err); return;}).finally(() => _CURRENT_THREADS--);
+    return nextFunc!().finally(() => _CURRENT_THREADS--);
 }
 
 const removeInvalidChars = (str: string): string => {
