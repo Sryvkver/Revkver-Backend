@@ -171,7 +171,7 @@ const waitForThread = async (func: () => Promise<void>): Promise<void> => {
 }
 
 const removeInvalidChars = (str: string): string => {
-    return str.replace(/[^\w\.!@#$^+=-\s]/g, '');
+    return str.replace(/[^\w\.!@#$^+=-\s]/g, '').replace(' ', '_');
 }
 
 const getMD5 = (fileBuffer: Buffer) => {
