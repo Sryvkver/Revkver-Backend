@@ -96,7 +96,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
         filename += '.' + extension;
         console.log('Starting download: ' + filename);
         const fileLocation = path.join(downloadfolder, filename);
-        fs.writeFileSync(fileLocation, '');
+        //fs.writeFileSync(fileLocation, '');
 
         axios.get(url, {
             responseType: 'stream',
@@ -112,7 +112,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 const md5 = getMD5(fileBuffer);
 
                 if(downloadedMD5s.includes(md5)) {
-                    fs.unlinkSync(fileLocation);
+                    //fs.unlinkSync(fileLocation);
                     res();
                     return;
                 }
