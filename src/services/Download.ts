@@ -71,33 +71,6 @@ const downloadedMD5s: Array<string> = [];
 
 const _download = async (url: string, filePath: string, filename: string, extension: string, id: string, galleryTitle: string|null): Promise<void> => {
     return new Promise((res, rej) => {
-        let downloadfolder = filePath;
-        if(galleryTitle){
-            downloadfolder = path.join(filePath, galleryTitle);
-            if(fs.existsSync(downloadfolder)) {
-                if(!fs.statSync(downloadfolder).isDirectory() || fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
-                    downloadfolder += '_' + id;
-                }
-            }
-        }
-
-        if(!fs.existsSync(downloadfolder))
-            fs.mkdirSync(downloadfolder, { recursive: true });
-
-        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
-            filename += '_' + id;
-
-
-        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
-            res();
-            return;
-        }
-
-        filename = filename.trim() + '.' + extension;
-        console.log('Starting download: ' + filename);
-        const fileLocation = path.join(downloadfolder, filename);
-        //fs.writeFileSync(fileLocation, '');
-
         axios.get(url, {
             responseType: 'stream',
             timeout: 999999999
@@ -106,61 +79,45 @@ const _download = async (url: string, filePath: string, filename: string, extens
             const fileBufferArr: Uint8Array[] = [];
             response.data.on('data', (chunk: Uint8Array) => {
                 fileBufferArr.push(chunk);
-            });
-            response.data.on('end', () => {
+            }).on('end', () => {
                 const fileBuffer = Buffer.concat(fileBufferArr);
                 const md5 = getMD5(fileBuffer);
 
-                if(downloadedMD5s.includes(md5) || fs.existsSync(fileLocation)) {
-                    //fs.unlinkSync(fileLocation);
+                if(downloadedMD5s.includes(md5)) {
                     res();
                     return;
                 }
                 downloadedMD5s.push(md5);
-                const wait = new Promise(res => setTimeout(res, 200));
-                wait.then(() => {
-                    console.log('Opening file: ' + fileLocation);
-                    fs.open(fileLocation, 'w', (err, fd) => {
-                        if(err) {
-                            console.error(err);
-                            rej();
+
+                let downloadfolder = galleryTitle ? path.join(filePath, galleryTitle) : filePath;
+                let fullFilePath = path.join(downloadfolder, filename + '.' + extension);
+                if(galleryTitle !== null) {
+                    if(fs.existsSync(fullFilePath)){
+                        downloadfolder += '_'+id;
+                        fullFilePath = path.join(downloadfolder, filename + '.' + extension);
+                        if (fs.existsSync(fullFilePath)) {
+                            res();
                             return;
                         }
-                        console.log('Writing file: ' + fileLocation);
-                        fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
-                            if(err) {
-                                console.error(err);
-                                rej();
-                                return;
-                            }
-                            fs.close(fd, (err) => {
-                                if(err) {
-                                    console.error(err);
-                                    rej();
-                                    return;
-                                }
-                                console.log('Finished downloading: ' + fileLocation);
-                                res();
-                            });
-                        });
-                    });
-                });
+                    }
+                }else if(fs.existsSync(fullFilePath)){
+                    fullFilePath = path.join(downloadfolder, filename + '_' + id + '.' + extension);
 
-                //fs.writeFileSync(fileLocation, fileBuffer);
+                    if(fs.existsSync(fullFilePath)){
+                        res();
+                        return;
+                    }
+                }
 
-                //utimesSync(fileLocation, utime*1000);
-                //console.log(`finished downloading: ${filename}`);
+                fs.mkdirSync(downloadfolder, { recursive: true });
+                fs.writeFileSync(fullFilePath, fileBuffer);
+                res();
             });
         }).catch(err => {
             console.error(err)
-            try {
-                fs.unlinkSync(fileLocation);
-            } catch (error) {}
             rej();
-
-            process.exit(-77777);
         });
-    });
+    })
 }
 
 export const downloadFilev2 = async (post: RedditData, subfolder: string): Promise<void> => {
