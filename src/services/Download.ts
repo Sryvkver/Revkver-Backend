@@ -117,15 +117,16 @@ const _download = async (url: string, filePath: string, filename: string, extens
                     return;
                 }
                 downloadedMD5s.push(md5);
-                console.log('Writing file: ' + fileLocation);
                 const wait = new Promise(res => setTimeout(res, 5000));
                 wait.then(() => {
+                    console.log('Opening file: ' + fileLocation);
                     fs.open(fileLocation, 'w', (err, fd) => {
                         if(err) {
                             console.error(err);
                             rej();
                             return;
                         }
+                        console.log('Writing file: ' + fileLocation);
                         fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
                             if(err) {
                                 console.error(err);
@@ -157,7 +158,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
             } catch (error) {}
             rej();
 
-            throw err;
+            process.exit(-77777);
         });
     });
 }
