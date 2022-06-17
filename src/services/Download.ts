@@ -69,17 +69,20 @@ const downloadedMD5s: Array<string> = [];
 //     });
 // }
 
-const _download = async (url: string, filePath: string, filename: string, extension: string, id: string, subfolder: string|null): Promise<void> => {
+const _download = async (url: string, filePath: string, filename: string, extension: string, id: string, galleryTitle: string|null): Promise<void> => {
     return new Promise((res, rej) => {
         let downloadfolder = filePath;
-        if(subfolder){
-
-            if(fs.existsSync(downloadfolder) && (!fs.statSync(downloadfolder).isDirectory || fs.existsSync(path.join(downloadfolder, filename + '.' + extension))))
-                downloadfolder += path.join(filePath, id);
-    
-            if(!fs.existsSync(downloadfolder))
-                fs.mkdirSync(downloadfolder, { recursive: true });
+        if(galleryTitle){
+            downloadfolder = path.join(filePath, galleryTitle);
+            if(fs.existsSync(downloadfolder)) {
+                if(!fs.statSync(downloadfolder).isDirectory() || fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
+                    downloadfolder += '_' + id;
+                }
+            }
         }
+
+        if(!fs.existsSync(downloadfolder))
+            fs.mkdirSync(downloadfolder, { recursive: true });
 
         if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
             filename += '_' + id;
