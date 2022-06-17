@@ -71,7 +71,8 @@ const downloadedMD5s: Array<string> = [];
 
 const _download = async (url: string, filePath: string, filename: string, extension: string): Promise<void> => {
     return new Promise((res, rej) => {
-        fs.mkdirSync(filePath, { recursive: true });
+        if(!fs.existsSync(filePath))
+            fs.mkdirSync(filePath, { recursive: true });
 
         if(fs.existsSync(path.join(filePath, filename + '.' + extension)))
             filename += '_' + Math.random().toString(36).substring(2, 15);
@@ -83,6 +84,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
         }
 
         filename += '.' + extension;
+        console.log('Starting download: ' + filename);
         //fs.writeFileSync(path.join(filePath, filename), '');
 
         axios.get(url, {
@@ -105,6 +107,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 }
 
                 downloadedMD5s.push(md5);
+                console.log('Writing file: ' + path.join(filePath, filename));
                 fs.writeFileSync(path.join(filePath, filename), fileBuffer);
 
                 //utimesSync(path.join(filePath, filename), utime*1000);
