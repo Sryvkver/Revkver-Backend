@@ -71,6 +71,9 @@ const downloadedMD5s: Array<string> = [];
 
 const _download = async (url: string, filePath: string, filename: string, extension: string): Promise<void> => {
     return new Promise((res, rej) => {
+        if(fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory)
+            filePath += '_' + Math.random().toString(36).substring(2, 15);
+
         if(!fs.existsSync(filePath))
             fs.mkdirSync(filePath, { recursive: true });
 
