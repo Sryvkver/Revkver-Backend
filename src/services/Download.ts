@@ -168,8 +168,10 @@ const generateDownloadPromise = (url: string, index: number, subfolder: string, 
 
         return waitForThread(() => _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null)).catch(err => {
             if(err === 'EISDIR'){
-                console.log(`${post.title ?? post.link_title} - ${index} failed to download, retrying...`);
-                generateDownloadPromise(url, index, subfolder, post)?.then(() => console.log(`${post.title ?? post.link_title} - ${index} successfully downloaded`));
+                console.log(`${post.title ?? post.link_title} - ${index} failed to download, retrying in 1 second...`);
+                setTimeout(() => {
+                    generateDownloadPromise(url, index, subfolder, post)?.then(() => console.log(`${post.title ?? post.link_title} - ${index} successfully downloaded`));
+                }, 1000);
             }
         });
     }
