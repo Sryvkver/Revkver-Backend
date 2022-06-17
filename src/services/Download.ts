@@ -151,7 +151,7 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
                     return _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null)
                         .catch((err: any) => {
                             if(err === 'EISDIR') {
-                                console.log(`${post.name} failed, retrying...`);
+                                console.log(`${title} failed, retrying...`);
                                 downloadPromises.push(threadPromise);
                             }
                         })
