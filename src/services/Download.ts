@@ -93,7 +93,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
             return;
         }
 
-        filename += '.' + extension;
+        filename = filename.trim() + '.' + extension;
         console.log('Starting download: ' + filename);
         const fileLocation = path.join(downloadfolder, filename);
         //fs.writeFileSync(fileLocation, '');
@@ -111,7 +111,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 const fileBuffer = Buffer.concat(fileBufferArr);
                 const md5 = getMD5(fileBuffer);
 
-                if(downloadedMD5s.includes(md5)) {
+                if(downloadedMD5s.includes(md5) || fs.existsSync(fileLocation)) {
                     //fs.unlinkSync(fileLocation);
                     res();
                     return;
@@ -126,7 +126,6 @@ const _download = async (url: string, filePath: string, filename: string, extens
                     }
                     fs.write(fd, fileBuffer, 0, fileBuffer.length, 0, (err) => {
                         if(err) {
-
                             console.error(err);
                             rej();
                             return;
@@ -155,6 +154,8 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 fs.unlinkSync(fileLocation);
             } catch (error) {}
             rej();
+
+            throw err;
         });
     });
 }
