@@ -110,7 +110,13 @@ const _download = async (url: string, filePath: string, filename: string, extens
                 }
 
                 fs.mkdirSync(downloadfolder, { recursive: true });
-                fs.writeFileSync(fullFilePath, fileBuffer);
+                try {
+                    fs.writeFileSync(fullFilePath, fileBuffer);
+                } catch (error: any) {
+                    if(error.code !== 'EISDIR') {
+                        throw error;
+                    }
+                }
                 res();
             });
         }).catch(err => {
@@ -150,9 +156,8 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
 
 const waitForThread = async (func: () => Promise<void>): Promise<void> => {
     _THREAD_QUEUE.push(func);
-    while (_CURRENT_THREADS >= 5) {
+    while (_CURRENT_THREADS >= _MAX_THREADS) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
     }
     _CURRENT_THREADS++;
 
