@@ -69,19 +69,23 @@ const downloadedMD5s: Array<string> = [];
 //     });
 // }
 
-const _download = async (url: string, filePath: string, filename: string, extension: string, id: string): Promise<void> => {
+const _download = async (url: string, filePath: string, filename: string, extension: string, id: string, subfolder: string|null): Promise<void> => {
     return new Promise((res, rej) => {
-        if(fs.existsSync(filePath) && (!fs.statSync(filePath).isDirectory || fs.existsSync(path.join(filePath, filename + '.' + extension))))
-            filePath += '_' + id;
+        let downloadfolder = subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH;
+        if(subfolder){
 
-        if(!fs.existsSync(filePath))
-            fs.mkdirSync(filePath, { recursive: true });
+            if(fs.existsSync(downloadfolder) && (!fs.statSync(downloadfolder).isDirectory || fs.existsSync(path.join(downloadfolder, filename + '.' + extension))))
+                downloadfolder += path.join(_DOWNLOADPATH, subfolder, id);
+    
+            if(!fs.existsSync(downloadfolder))
+                fs.mkdirSync(downloadfolder, { recursive: true });
+        }
 
-        if(fs.existsSync(path.join(filePath, filename + '.' + extension)))
+        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension)))
             filename += '_' + id;
 
 
-        if(fs.existsSync(path.join(filePath, filename + '.' + extension))) {
+        if(fs.existsSync(path.join(downloadfolder, filename + '.' + extension))) {
             res();
             return;
         }
@@ -90,6 +94,7 @@ const _download = async (url: string, filePath: string, filename: string, extens
         console.log('Starting download: ' + filename);
         //fs.writeFileSync(path.join(filePath, filename), '');
 
+        const fileLocation = path.join(downloadfolder, filename);
         axios.get(url, {
             responseType: 'stream',
             timeout: 999999999
@@ -109,8 +114,8 @@ const _download = async (url: string, filePath: string, filename: string, extens
                     return;
                 }
                 downloadedMD5s.push(md5);
-                console.log('Writing file: ' + path.join(filePath, filename));
-                fs.open(path.join(filePath, filename), 'w', (err, fd) => {
+                console.log('Writing file: ' + fileLocation);
+                fs.open(fileLocation, 'w', (err, fd) => {
                     if(err) {
                         console.error(err);
                         rej();
@@ -128,22 +133,22 @@ const _download = async (url: string, filePath: string, filename: string, extens
                                 rej();
                                 return;
                             }
-                            console.log('Finished downloading: ' + path.join(filePath, filename));
+                            console.log('Finished downloading: ' + fileLocation);
                             //res();
                         });
                     });
                 }
                 );
-                //fs.writeFileSync(path.join(filePath, filename), fileBuffer);
+                //fs.writeFileSync(fileLocation, fileBuffer);
 
-                //utimesSync(path.join(filePath, filename), utime*1000);
+                //utimesSync(fileLocation, utime*1000);
                 //console.log(`finished downloading: ${filename}`);
                 res();
             });
         }).catch(err => {
             console.error(err)
             try {
-                fs.unlinkSync(path.join(filePath, filename));
+                fs.unlinkSync(fileLocation);
             } catch (error) {}
             rej();
         });
@@ -161,12 +166,10 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
                 const title = removeInvalidChars((post.title ?? post.link_title) as string).substring(0, 240).trim();;
                 const fileName = post.is_gallery ? index.toString() : title;
                 //const filePath = path.join(subfolder ? path.join(_DOWNLOADPATH, subfolder) : _DOWNLOADPATH, fileName);
-                const filePath = post.is_gallery 
-                    ? path.join(_DOWNLOADPATH, subfolder, title)
-                    : path.join(_DOWNLOADPATH, subfolder);
+                const filePath = path.join(_DOWNLOADPATH, subfolder);
 
                 downloadPromises.push(
-                    waitForThread(() => _download(url, filePath, fileName, extension, post.name))
+                    waitForThread(() => _download(url, filePath, fileName, extension, post.name, post.is_gallery ? title : null))
                 )
             }
         });
