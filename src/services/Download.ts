@@ -69,16 +69,16 @@ const downloadedMD5s: Array<string> = [];
 //     });
 // }
 
-const _download = async (url: string, filePath: string, filename: string, extension: string): Promise<void> => {
+const _download = async (url: string, filePath: string, filename: string, extension: string, id: string): Promise<void> => {
     return new Promise((res, rej) => {
-        if(fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory)
-            filePath += '_' + Math.random().toString(36).substring(2, 15);
+        if(fs.existsSync(filePath) && (!fs.statSync(filePath).isDirectory || fs.existsSync(path.join(filePath, filename + '.' + extension))))
+            filePath += '_' + id;
 
         if(!fs.existsSync(filePath))
             fs.mkdirSync(filePath, { recursive: true });
 
         if(fs.existsSync(path.join(filePath, filename + '.' + extension)))
-            filename += '_' + Math.random().toString(36).substring(2, 15);
+            filename += '_' + id;
 
 
         if(fs.existsSync(path.join(filePath, filename + '.' + extension))) {
@@ -166,7 +166,7 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
                     : path.join(_DOWNLOADPATH, subfolder);
 
                 downloadPromises.push(
-                    waitForThread(() => _download(url, filePath, fileName, extension))
+                    waitForThread(() => _download(url, filePath, fileName, extension, post.name))
                 )
             }
         });
