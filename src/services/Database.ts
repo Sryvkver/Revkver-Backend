@@ -1,8 +1,21 @@
+import { Collection, Document, MongoClient } from 'mongodb';
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig'
 import { AddSubredditRequest } from '../model/AddSubredditRequest';
 
 const db = new JsonDB(new Config("./database/database", true, true, '/'));
+const mongoClient = new MongoClient(process.env.MONGO_URI!);
+
+let mongoMD5Collection: Collection<Document> | null = null;
+let mongoIDCollection: Collection<Document> | null = null;
+
+((async () => {
+    await mongoClient.connect();
+    const mongoDb = mongoClient.db('reddit_downloader');
+    mongoMD5Collection = mongoDb.collection('md5');
+    mongoIDCollection = mongoDb.collection('ids');
+}))();
+
 
 abstract class Subreddit {
     "name": string;
@@ -79,12 +92,30 @@ export const updateSingleSubreddit = (subreddit: string, newData: Subreddit): vo
     db.push('/subreddits', subreddits, true);
 }
 
-export const getDownloadedIds = (): Array<string> => {
-    try {
-        return db.getData('/downloadedIds');
-    } catch (error) {
-        return [];
+export const getDownloadedIds = async (): Promise<Array<string>> => {
+    while(mongoIDCollection == null) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
+
+    const ids = await mongoIDCollection.find({}).toArray();
+    return [];
+}
+
+export const addMD5 = async(md5: string): Promise<void> => {
+    while(mongoMD5Collection == null) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    await mongoMD5Collection.insertOne({ md5 });
+}
+
+export const isMD5Downloaded = async (md5: string): Promise<boolean> => {
+    while(mongoMD5Collection == null) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const found = await mongoMD5Collection.findOne({ md5 });
+    return found != undefined;
 }
 
 // export const getDownloadedMD5s = (): Array<string> => {
@@ -107,6 +138,13 @@ export const getDownloadedIds = (): Array<string> => {
 //     db.push('/hashes', md5s, true);
 // }
 
-export const addDownloadedIds = (ids: Array<string>): void => {
-    db.push('/downloadedIds', ids, false);
+export const addDownloadedIds = async (ids: Array<string>): Promise<void> => {
+    while(mongoIDCollection == null) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const idsToAdd = ids.map(id => {
+        return {id}
+    });
+    await mongoIDCollection.insertMany(idsToAdd);
 }

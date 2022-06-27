@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { utimes, utimesSync } from 'utimes';
 import crypto from 'crypto';
-import { addDownloadedIds, getDownloadedIds } from './Database';
+import { addDownloadedIds, addMD5, getDownloadedIds, isMD5Downloaded } from './Database';
 import { RedditData } from '../model/redditData';
 import { getExtensionFromUrl, getMediaUrl } from './RedditService';
 
@@ -11,8 +11,12 @@ const _DOWNLOADPATH = process.env.DOWNLOAD_FOLDER ?? './downloads/';
 const _MAX_THREADS = 5;
 const _THREAD_QUEUE: Array<() => Promise<void>> = [];
 let _CURRENT_THREADS = 0;
-const downloadedIds = getDownloadedIds();
-const downloadedMD5s: Array<string> = [];
+const downloadedIds: string[] = [];
+const downloadedMD5s: string[] = [];
+
+(async() => {
+    downloadedIds.push(...await getDownloadedIds());
+})();
 
 // TODO check md5 of files, to remove duplicates
 
@@ -79,15 +83,16 @@ const _download = async (url: string, filePath: string, filename: string, extens
             const fileBufferArr: Uint8Array[] = [];
             response.data.on('data', (chunk: Uint8Array) => {
                 fileBufferArr.push(chunk);
-            }).on('end', () => {
+            }).on('end', async () => {
                 const fileBuffer = Buffer.concat(fileBufferArr);
                 const md5 = getMD5(fileBuffer);
 
-                if(downloadedMD5s.includes(md5)) {
+                if(downloadedMD5s.includes(md5) || (await isMD5Downloaded(md5))) {
                     res();
                     return;
                 }
                 downloadedMD5s.push(md5);
+                addMD5(md5);
 
                 let downloadfolder = galleryTitle ? path.join(filePath, galleryTitle) : filePath;
                 let fullFilePath = path.join(downloadfolder, filename + '.' + extension);
@@ -150,7 +155,7 @@ export const downloadFilev2 = async (post: RedditData, subfolder: string): Promi
         });
     }
 
-    addDownloadedIds([post.name]);
+    //addDownloadedIds([post.name]);
     return Promise.all(downloadPromises).then(() => {});
 
     //const downloadPromise = waitForThread(() => downloadFile(url, post.name,, extension, utime, subreddit.name));
@@ -197,38 +202,6 @@ const removeInvalidChars = (str: string): string => {
 
 const getMD5 = (fileBuffer: Buffer) => {
     return crypto.createHash('md5').update(fileBuffer).digest('hex');
-}
-
-const readAllFilesOfDir = (dir: string): Array<string> => {
-    const files = fs.readdirSync(dir);
-    const result: Array<string> = [];
-    files.forEach(file => {
-        const filePath = path.join(dir, file);
-        if (fs.statSync(filePath).isFile()) {
-            result.push(filePath);
-        } else {
-            result.push(...readAllFilesOfDir(filePath));
-        }
-    });
-    return result;
-}
-
-const updateMD5Database = async (): Promise<void> => {
-    return new Promise((res, rej) => {
-        const files = readAllFilesOfDir(_DOWNLOADPATH);
-        const md5s = files.map(filepath => getMD5(fs.readFileSync(filepath)));
-        downloadedMD5s.push(...md5s);
-        //const oldMd5s = getDownloadedMD5s();
-
-        //const set = new Set([...md5s, ...oldMd5s]);
-        //setDownloadedMD5s(Array.from(set));
-
-        res();
-    })
-}
-
-export const initDownloader = (): Promise<unknown> => {
-    return updateMD5Database();
 }
 
 fs.mkdirSync(_DOWNLOADPATH, { recursive: true });

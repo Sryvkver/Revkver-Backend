@@ -3,7 +3,7 @@ require('dotenv').config()
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import { downloadFilev2, initDownloader } from "./services/Download";
+import { downloadFilev2 } from "./services/Download";
 import { getExtensionFromUrl, getJsonFromSubreddit, getMediaUrl } from "./services/RedditService"
 import { addDownloadedIds, addSubreddits, getDownloadedIds, getSubreddits, updateAllSubreddits, updateSingleSubreddit } from './services/Database';
 import { AddSubredditRequest } from './model/AddSubredditRequest';
@@ -28,13 +28,9 @@ app.post('/add', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-initDownloader().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server listening on port ${PORT}`);
-        getFeed();
-    });
-    //getFeed();
-    //setInterval(getFeed, 1000 * 60 * 30); // Get all feeds every half hour
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+    getFeed();
 });
 
 
@@ -51,12 +47,22 @@ const getFeed = () => {
             posts.forEach(post => {
                 const downloadPromise = downloadFilev2(post, subreddit.name);
                 downloadPromises.push(downloadPromise);
+
+                downloadPromise.then(() => {
+                    addDownloadedIds([post.name]);
+                    const indexOfPost = posts.findIndex(p => p.name === post.name);
+                    const oldIndexOfPost = posts.findIndex(p => p.name === subreddit.lastID);
+                    if(indexOfPost > oldIndexOfPost || oldIndexOfPost === -1){
+                        subreddit.lastID = post.name;
+                        updateSingleSubreddit(subreddit.name, subreddit);
+                    }
+                })
             });
 
-            if(posts.length > 0) {
-                subreddit.lastID = posts[posts.length-1].name;
-                updateSingleSubreddit(subreddit.name, subreddit);
-            }
+            // if(posts.length > 0) {
+            //     subreddit.lastID = posts[posts.length-1].name;
+            //     updateSingleSubreddit(subreddit.name, subreddit);
+            // }
         });
 
         feedPromises.push(promise);
